@@ -181,6 +181,11 @@ Alternatively, you can use the Temporal CLI to start the workflow:
 temporal workflow start --type WorkshopWorkflow --task-queue workshop-tq --input '"Hello"'
 ```
 
+Let's explore the Temporal UI to see the workflow and explore the history.
+
+In a browser open up the following address [http://localhost:8233](http://localhost:8233])
+
+
 Stop the worker by using <CTRL-C> in the terminal window where the worker is running. You can leave the Temporal Server running.
 
 ## Testing
