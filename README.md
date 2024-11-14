@@ -24,12 +24,12 @@ Once installed, you can skip to running the workflow and starting a workflow sec
 
 ## Create a new Temporal Typescript Project
 
-Create a new Temporal project by running the following command:
+In a terminal window, create a new Temporal project by running the following command:
 
 ```bash
 npx @temporalio/create@latest --sample empty
 ```
-This will prompt you for a project name. Use workshop
+This will prompt you for a project name. Use **workshop**.
 
 You will also be asked if you want to initialize a git repository for the project. You can choose either option.
 
@@ -44,7 +44,7 @@ npm run start.watch
 npm run workflow
 ```
 
-Notice the files that are generated:
+This command generates a new folder. In the src directory, notice the files that are generated:
 
 * activites.ts - the activities
 * client.ts    - code to start the workflow
@@ -52,11 +52,15 @@ Notice the files that are generated:
 * worker.ts    - code to start the worker
 * workflows.ts - workflow code
 
-## Change the task queue name
+## Modify the generated files 
 
-In the shared.ts file, change the name of the TASK_QUEUE_NAME to 'workshp-tq' and save the file.
+Open up an IDE of choice (e.g. WebStorm, Visual Studio Code, etc.) and open the project. The files that will be modified are located in the src folder.
 
-## Add an Echo activity
+### Change the task queue name
+
+In the shared.ts file, change the name of the TASK_QUEUE_NAME to 'workshop-tq' and save the file.
+
+### Add an Echo activity
 
 For the first activity, let's add a function that simply returns what is is passed in.
 
@@ -76,7 +80,7 @@ export const createActivities = () => ({
 })
 ```
 
-## Create a workflow
+### Create a workflow
 
 In the workflows.ts file, copy the code below:
 
@@ -94,12 +98,12 @@ const { echo } = proxyActivities<ReturnType<typeof createActivities>>( {
 });
 
 export async function WorkshopWorkflow(input: string): Promise<string> {
-    const result = echo(input);
+    const result = await echo(input);
     return `Echo returned: ${result}`;
 }
 ```
 
-## Change the worker
+### Change the worker
 
 In the worker.ts file, change line # 2 from
 
@@ -113,7 +117,7 @@ to
 import { createActivities } from './activities';
 ```
 
-In the worker.ts file, change line # 21 from 
+Also in the worker.ts file, change line # 21 from 
 
 ```typescript
     activities,
@@ -125,9 +129,9 @@ to
     activities: createActivities(),
 ```
 
-## Import the workflow in client.ts
+### Import the workflow in client.ts
 
-Change the import in client.ts to reflect the name of your workflow. In this case change
+Change the import in client.ts to reflect the name of your workflow. In this case change line # 6 from
 
 ```
 import { YOUR_WORKFLOW } from './workflows';
@@ -150,7 +154,7 @@ to
  const handle = await client.workflow.start(WorkshopWorkflow, {
 ```
 
-## Run the workflow
+### Run the workflow
 
 For this part of the workshop, we'll need three different terminal windows.
 
@@ -177,7 +181,11 @@ Alternatively, you can use the Temporal CLI to start the workflow:
 temporal workflow start --type WorkshopWorkflow --task-queue workshop-tq --input '"Hello"'
 ```
 
+Stop the worker by using <CTRL-C> in the terminal window where the worker is running. You can leave the Temporal Server running.
+
 ## Testing
+
+Let's add the Temporal testing package to our project:
 
 ```bash
 npm install @temporalio/testing
@@ -195,7 +203,8 @@ import { proxyActivities, log, sleep } from '@temporalio/workflow';
 import { after, before, it } from 'mocha';
 import assert from 'assert';
 
-import { approveSignal, WorkshopWorkflow } from '../workflows';
+// import { approveSignal, WorkshopWorkflow } from '../workflows';
+import { WorkshopWorkflow } from '../workflows';
 import { createActivities } from '../activities';
 
 const testingTaskQueue = 'WorkshopTestTaskQueue';
@@ -248,11 +257,35 @@ npm test
 
 ## Adding Signal and Query to the workflow
 
-In the workflows.ts, change the WorkshopWorkflow function to look like this:
+In the workflows.ts, change the file to look like this:
 
 ```typescript
+import {
+    log, 
+    proxyActivities, 
+    setHandler, 
+    defineSignal, 
+    condition,
+    ApplicationFailure,
+    defineQuery } from "@temporalio/workflow";
+import { createActivities } from "./activities";
+
+const { echo } = proxyActivities<ReturnType<typeof createActivities>>( {
+    startToCloseTimeout: '5 seconds',
+    retry: {
+      initialInterval: '1s',
+      backoffCoefficient: 2,
+      maximumInterval: '30s',
+    },
+});
+
+export const approveSignal = defineSignal<[null]>('approveSignal');
+export const workflowStatusQuery = defineQuery<string>('workflowStatus');
+
+export async function WorkshopWorkflow(input: string): Promise<string> {
+
     let approved = false;
-    let approvalTime = 30; 
+    const approvalTime = 30;
     let currentStep = "Initializing";
 
     // Set Signal Handler
@@ -286,7 +319,11 @@ In the workflows.ts, change the WorkshopWorkflow function to look like this:
     currentStep = 'Complete!'
 
     return `Echo returned: ${result}`;
+}
 ```
+
+The changes are reflected in the imports section, defining the Signal and Query and modifying 
+the workflow function to add the signal and query handlers.
 
 Run the test again and notice that the test is now broken:
 
@@ -294,7 +331,33 @@ Run the test again and notice that the test is now broken:
 npm test
 ```
 
-Update the test and uncomment out line # 42. It looks like this:
+Update the test and remove the comment on line # 8. It looks like this:
+
+```typescript
+// import { approveSignal, WorkshopWorkflow } from '../workflows';
+``` 
+
+and should be
+
+```typescript
+import { approveSignal, WorkshopWorkflow } from '../workflows';
+```
+
+Comment out line # 9. It looks like this:
+
+```typescript
+import { WorkshopWorkflow } from '../workflows';
+```
+
+and should be
+
+```typescript
+// import { WorkshopWorkflow } from '../workflows';
+```
+
+Alternatively, you could delete that line. If you do, the line number below will be 41 not 42.
+
+Also, remove the comment from line # 42. It looks like this:
 
 ```typescript
 // handle.signal(approveSignal, null);
@@ -357,7 +420,7 @@ async function run() {
   console.log(`The response from the query is ${queryResponse}`);
 
   // approve this workflow
-  handle.signal(approveSignal, null);
+  await handle.signal(approveSignal, null);
 
   // optional: wait for client result
   console.log(await handle.result());

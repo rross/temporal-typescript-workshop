@@ -1,14 +1,11 @@
-// Add Workflow Definitions here.
-
-import { 
+import {
     log, 
     proxyActivities, 
     setHandler, 
     defineSignal, 
     condition,
     ApplicationFailure,
-    defineQuery, 
-    defineUpdate } from "@temporalio/workflow";
+    defineQuery } from "@temporalio/workflow";
 import { createActivities } from "./activities";
 
 const { echo } = proxyActivities<ReturnType<typeof createActivities>>( {
@@ -26,7 +23,7 @@ export const workflowStatusQuery = defineQuery<string>('workflowStatus');
 export async function WorkshopWorkflow(input: string): Promise<string> {
 
     let approved = false;
-    let approvalTime = 30; 
+    const approvalTime = 30;
     let currentStep = "Initializing";
 
     // Set Signal Handler

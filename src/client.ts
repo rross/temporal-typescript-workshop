@@ -29,12 +29,12 @@ async function run() {
   console.log(`Started workflow ${handle.workflowId}`);
 
   // query this workflow
-  var queryResponse = await handle.query(workflowStatusQuery);
+  const queryResponse = await handle.query(workflowStatusQuery);
 
   console.log(`The response from the query is ${queryResponse}`);
 
   // approve this workflow
-  handle.signal(approveSignal, null);
+  await handle.signal(approveSignal, null);
 
   // optional: wait for client result
   console.log(await handle.result());
